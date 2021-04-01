@@ -1,0 +1,3 @@
+[submodule "GigaChess"]
+	path = GigaChess
+	url = https://github.com/TroyNeubauer/GigaChess.git
