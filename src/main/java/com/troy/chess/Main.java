@@ -17,16 +17,15 @@ public class Main extends Application {
      * Resizes the existing squares in java fx so that they each have the requested size in pixels
      * @param squarePX
      */
-    private static void resizeBoard(Pane board, double squarePX) {
-        double oldWidth = 0.0;
-        double conversionRatio = 0.0;
+    private static void resizeBoard(Pane board, double widthPX, double heightPX) {
+    	double sideLen = Math.sqrt(board.getChildren().size());
+    	
         for (int i = 0; i < board.getChildren().size(); i++) {
             Rectangle rectangle = (Rectangle) board.getChildren().get(i);
             if (oldWidth == 0.0) {
                 oldWidth = rectangle.getWidth();
                 conversionRatio = squarePX / oldWidth;
             }
-            System.out.println("conversion ratio: " + conversionRatio);
             rectangle.setX(rectangle.getX() * conversionRatio);
             rectangle.setY(rectangle.getY() * conversionRatio);
             rectangle.setWidth(squarePX);
