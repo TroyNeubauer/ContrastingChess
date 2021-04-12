@@ -26,3 +26,13 @@ ext {
 application {
     mainClassName = javaMainClass
 }
+
+jar {
+    manifest {
+        attributes "Main-Class": application.mainClassName
+    }
+
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
