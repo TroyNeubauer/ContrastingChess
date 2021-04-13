@@ -79,6 +79,7 @@ public class Main extends Application {
     }
 
     public Main() {
+        Natives.init();
         this.boardSize = 10;
 
         this.pieces = new ImageView[this.boardSize * this.boardSize];
