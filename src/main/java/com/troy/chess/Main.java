@@ -8,13 +8,21 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+
+import java.io.InputStream;
 
 public class Main extends Application {
-    Pane board = new Pane();
-    Pane pane = new Pane();
+    private Pane board = new Pane();
+    private Pane pane = new Pane();
 
     private int boardSize;
     private int osTitleBarSize;
+
+    private ImageView[] pieces;
+
+    private Image KING, ELEPHANT;
 
     private static double squareX(int size, int file, double squarePX) {
         return squarePX * file;
@@ -31,37 +39,58 @@ public class Main extends Application {
      * 
      * @param squarePX
      */
-    private static void resizeBoard(Pane board, double squarePX, int size) {
-        double sideLen = Math.sqrt(board.getChildren().size());
+    private void resizeBoard(double squarePX) {
+        double sideLen = Math.sqrt(this.board.getChildren().size());
 
-        for (int i = 0; i < board.getChildren().size(); i++) {
-            int rank = i / size;
-            int file = i % size;
+        for (int i = 0; i < this.board.getChildren().size(); i++) {
+            int rank = i / this.boardSize;
+            int file = i % this.boardSize;
             Rectangle rectangle = (Rectangle) board.getChildren().get(i);
-            rectangle.setX(squareX(size, file, squarePX));
-            rectangle.setY(squareY(size, rank, squarePX));
+            rectangle.setX(squareX(this.boardSize, file, squarePX));
+            rectangle.setY(squareY(this.boardSize, rank, squarePX));
             rectangle.setWidth(squarePX);
             rectangle.setHeight(squarePX);
+
+            if (this.pieces[i] != null) {
+                ImageView view = this.pieces[i];
+                view.setX(squareX(this.boardSize, file, squarePX));
+                view.setY(squareY(this.boardSize, rank, squarePX));
+                view.setFitWidth(squarePX);
+                view.setFitHeight(squarePX);
+
+            }
         }
     }
 
-    private static void setupBoard(Pane board, int size, int squarePX) {
-        board.getChildren().clear();
-        for (int rank = 0; rank < size; rank++) {
-            for (int file = 0; file < size; file++) {
+    private void setupBoard(int squarePX) {
+        this.board.getChildren().clear();
+        for (int rank = 0; rank < this.boardSize; rank++) {
+            for (int file = 0; file < this.boardSize; file++) {
+                int i = file + rank * this.boardSize;
                 double x = file * squarePX;
                 double y = rank * squarePX;
                 Rectangle square = new Rectangle(x, y, squarePX, squarePX);
                 Paint color = ((rank % 2) ^ (file % 2)) == 0 ? Color.WHITE : Color.BROWN;
                 square.setFill(color);
                 board.getChildren().add(square);
+
             }
         }
     }
 
     public Main() {
         this.boardSize = 10;
-        setupBoard(board, this.boardSize, 10);
+
+        this.pieces = new ImageView[this.boardSize * this.boardSize];
+        loadImages();
+
+        this.pieces[5] = new ImageView();
+        this.pieces[5].setImage(KING);
+
+        this.pieces[52] = new ImageView();
+        this.pieces[52].setImage(ELEPHANT);
+
+        setupBoard(10);
 
         Button start = new Button();
         start.relocate(50, 0);
@@ -70,6 +99,8 @@ public class Main extends Application {
 
         pane.getChildren().add(board);
         pane.getChildren().add(start);
+        pane.getChildren().add(this.pieces[5]);
+        pane.getChildren().add(this.pieces[52]);
 
     }
 
@@ -89,7 +120,7 @@ public class Main extends Application {
         stage.show();
         this.osTitleBarSize = (int) stage.getHeight() - height.value;
         System.out.println("Window title bar size is: " + this.osTitleBarSize);
-        
+
         doResize(width.value, height.value);
 
         stage.widthProperty().addListener((obs, oldVal, newVal) -> {
@@ -105,11 +136,16 @@ public class Main extends Application {
     }
 
     private void doResize(int width, int height) {
-    	//Always leave one square of padding
+        // Always leave one square of padding
         double squareWidthPX = (double) width / (this.boardSize + 1);
         double squareHeightPX = (double) (height - this.osTitleBarSize) / (this.boardSize + 1);
         double squarePX = Math.min(squareWidthPX, squareHeightPX);
 
-        resizeBoard(board, squarePX, this.boardSize);
+        resizeBoard(squarePX);
+    }
+
+    private void loadImages() {
+        this.KING = new Image(this.getClass().getResourceAsStream("/contrasting_chess/king.png"));
+        this.ELEPHANT = new Image(this.getClass().getResourceAsStream("/contrasting_chess/elephant.png"));
     }
 }
