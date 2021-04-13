@@ -14,6 +14,7 @@ public class Main extends Application {
     Pane pane = new Pane();
 
     private int boardSize;
+    private int osTitleBarSize;
 
     private static double squareX(int size, int file, double squarePX) {
         return squarePX * file;
@@ -48,10 +49,8 @@ public class Main extends Application {
         board.getChildren().clear();
         for (int rank = 0; rank < size; rank++) {
             for (int file = 0; file < size; file++) {
-                System.out.println("looping " + file + ", " + rank);
                 double x = file * squarePX;
                 double y = rank * squarePX;
-                System.out.println("x: " + x + ", y: " + y);
                 Rectangle square = new Rectangle(x, y, squarePX, squarePX);
                 Paint color = ((rank % 2) ^ (file % 2)) == 0 ? Color.WHITE : Color.BROWN;
                 square.setFill(color);
@@ -65,7 +64,7 @@ public class Main extends Application {
         setupBoard(board, this.boardSize, 10);
 
         Button start = new Button();
-        start.relocate(100, 270);
+        start.relocate(50, 0);
         start.setText("Start");
         start.autosize();
 
@@ -87,6 +86,10 @@ public class Main extends Application {
 
         stage.setScene(new Scene(pane, width.value, height.value));
         stage.show();
+        this.osTitleBarSize = (int) stage.getHeight() - height.value;
+        System.out.println("Window title bar size is: " + this.osTitleBarSize);
+        
+        doResize(width.value, height.value);
 
         stage.widthProperty().addListener((obs, oldVal, newVal) -> {
             width.value = newVal.intValue();
@@ -100,10 +103,10 @@ public class Main extends Application {
 
     }
 
-
     private void doResize(int width, int height) {
-        double squareWidthPX = (double) width / this.boardSize;
-        double squareHeightPX = (double) height / this.boardSize;
+    	//Always leave one square of padding
+        double squareWidthPX = (double) width / (this.boardSize + 1);
+        double squareHeightPX = (double) (height - this.osTitleBarSize) / (this.boardSize + 1);
         double squarePX = Math.min(squareWidthPX, squareHeightPX);
 
         resizeBoard(board, squarePX, this.boardSize);
