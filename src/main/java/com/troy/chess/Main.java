@@ -13,21 +13,32 @@ public class Main extends Application {
     Pane board = new Pane();
     Pane pane = new Pane();
 
+    private int boardSize;
+
+    private static double squareX(int size, int file, double squarePX) {
+        return squarePX * file;
+    }
+
+    private static double squareY(int size, int rank, double squarePX) {
+        double boardHeightPX = size * squarePX;
+        return boardHeightPX - rank * squarePX;
+    }
+
     /**
-     * Resizes the existing squares in java fx so that they each have the requested size in pixels
+     * Resizes the existing squares in java fx so that they each have the requested
+     * size in pixels
+     * 
      * @param squarePX
      */
-    private static void resizeBoard(Pane board, double widthPX, double heightPX) {
-    	double sideLen = Math.sqrt(board.getChildren().size());
-    	
+    private static void resizeBoard(Pane board, double squarePX, int size) {
+        double sideLen = Math.sqrt(board.getChildren().size());
+
         for (int i = 0; i < board.getChildren().size(); i++) {
+            int rank = i / size;
+            int file = i % size;
             Rectangle rectangle = (Rectangle) board.getChildren().get(i);
-            if (oldWidth == 0.0) {
-                oldWidth = rectangle.getWidth();
-                conversionRatio = squarePX / oldWidth;
-            }
-            rectangle.setX(rectangle.getX() * conversionRatio);
-            rectangle.setY(rectangle.getY() * conversionRatio);
+            rectangle.setX(squareX(size, file, squarePX));
+            rectangle.setY(squareY(size, rank, squarePX));
             rectangle.setWidth(squarePX);
             rectangle.setHeight(squarePX);
         }
@@ -50,7 +61,8 @@ public class Main extends Application {
     }
 
     public Main() {
-        setupBoard(board, 8, 10);
+        this.boardSize = 10;
+        setupBoard(board, this.boardSize, 10);
 
         Button start = new Button();
         start.relocate(100, 270);
@@ -62,19 +74,38 @@ public class Main extends Application {
 
     }
 
+    static class IntHolder {
+        int value;
+    }
+
     @Override
     public void start(Stage stage) {
-        stage.setScene(new Scene(pane, 512, 512));
+        final IntHolder width = new IntHolder();
+        final IntHolder height = new IntHolder();
+        width.value = 512;
+        height.value = 512;
+
+        stage.setScene(new Scene(pane, width.value, height.value));
         stage.show();
 
         stage.widthProperty().addListener((obs, oldVal, newVal) -> {
-            resizeBoard(board, newVal.doubleValue() / 10);
+            width.value = newVal.intValue();
+            doResize(width.value, height.value);
         });
 
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
-            resizeBoard(board, newVal.doubleValue() / 10);
+            height.value = newVal.intValue();
+            doResize(width.value, height.value);
         });
 
     }
 
+
+    private void doResize(int width, int height) {
+        double squareWidthPX = (double) width / this.boardSize;
+        double squareHeightPX = (double) height / this.boardSize;
+        double squarePX = Math.min(squareWidthPX, squareHeightPX);
+
+        resizeBoard(board, squarePX, this.boardSize);
+    }
 }
