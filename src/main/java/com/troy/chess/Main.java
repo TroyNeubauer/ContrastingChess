@@ -85,6 +85,7 @@ public class Main extends Application {
         height.value = 512;
 
         stage.setScene(new Scene(pane, width.value, height.value));
+        stage.setTitle("Contrasting Chess by Troy Neubauer");
         stage.show();
         this.osTitleBarSize = (int) stage.getHeight() - height.value;
         System.out.println("Window title bar size is: " + this.osTitleBarSize);
