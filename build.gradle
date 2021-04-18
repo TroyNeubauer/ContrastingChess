@@ -29,16 +29,6 @@ application {
     mainClassName = javaMainClass
 }
 
-jar {
-    manifest {
-        attributes "Main-Class": application.mainClassName
-    }
-
-    from {
-        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    }
-}
-
 
 task cargoTest(type:Exec) {
     def homePath = System.properties['user.home']
@@ -52,9 +42,7 @@ test.dependsOn cargoTest
 def String outputFile
 
 task cargoBuild(type:Exec) {
-    def homePath = System.properties['user.home']
-
-    commandLine "${homePath}.cargo/bin/cargo"
+    executable "cargo"
     args "build", "--manifest-path=./GigaChess/Cargo.toml"
 
     if (System.getProperty("os.name").toLowerCase().contains("windows")) {
@@ -67,26 +55,34 @@ task cargoBuild(type:Exec) {
 
 compileJava.dependsOn cargoBuild
 
-if (System.getProperty("os.name").toLowerCase().contains("windows")) {
-    throw new GradleException('Building jar files on windows is not supported! Try on linux')
 
-} else {
+task cargoBuildWindows(type:Exec) {
+    def homePath = System.properties['user.home']
 
-    task cargoBuildWindows(type:Exec) {
-        def homePath = System.properties['user.home']
+    commandLine "${homePath}.cargo/bin/cargo"
+    args "build", "--target", "x86_64-pc-windows-gnu", "--manifest-path=./GigaChess/Cargo.toml"
+}
 
-        commandLine "${homePath}.cargo/bin/cargo"
-        args "build", "--target", "x86_64-pc-windows-gnu", "--manifest-path=./GigaChess/Cargo.toml"
+task copyNativesJar(type: Copy) {
+
+}
+
+task fatJar(type: Jar) {
+
+    manifest {
+        attributes "Main-Class": application.mainClassName
     }
 
-
-    task copyNativesJar(type: Copy) {
-
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
     }
 
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
 
-    jar.dependsOn copyNativesJar
-    copyNativesJar.dependsOn cargoBuildWindows
+fatJar.dependsOn copyNativesJar
+copyNativesJar.dependsOn cargoBuildWindows
 
 /*
     task cargoBuildAppleX86(type:Exec) {
@@ -100,4 +96,3 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
 */
 
 
-}
