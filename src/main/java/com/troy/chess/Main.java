@@ -7,6 +7,7 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ToolBar;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
@@ -16,8 +17,6 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-
-import java.io.InputStream;
 
 public class Main extends Application {
     private BorderPane board = new BorderPane();
@@ -30,6 +29,13 @@ public class Main extends Application {
 
     private Image KING, ELEPHANT;
 
+    /**
+     * The index of the last square that was clicked or -1 in no square has been clicked yet.
+     * Used for storing the first square clicked when making a move
+     */
+    private int lastClickedIndex = -1;
+
+
     private static double squareX(int size, int file, double squarePX) {
         return squarePX * file;
     }
@@ -39,16 +45,26 @@ public class Main extends Application {
         return boardHeightPX - rank * squarePX;
     }
 
+    private double lastSquarePX = 10;
+
     /**
      * Resizes the existing squares in java fx so that they each have the requested
      * size in pixels
      * 
-     * @param squarePX
+     * @param squarePX How wide and tall in pixels each square should be. Use -1 to use the last value
      */
     private void resizeBoard(double squarePX) {
+        if (squarePX == -1) {
+            squarePX = this.lastSquarePX;
+            System.out.println("Using last square px" + squarePX);
+        } else {
+            this.lastSquarePX = squarePX;
+        }
         double sideLen = Math.sqrt(this.board.getChildren().size());
 
-        for (int i = 0; i < this.board.getChildren().size(); i++) {
+        for (int ii = 0; ii < this.board.getChildren().size(); ii++) {
+            final int i = ii;
+
             int rank = i / this.boardSize;
             int file = i % this.boardSize;
             Rectangle rectangle = (Rectangle) board.getChildren().get(i);
@@ -57,17 +73,39 @@ public class Main extends Application {
             rectangle.setWidth(squarePX);
             rectangle.setHeight(squarePX);
 
-            if (this.pieces[i] != null) {
-                ImageView view = this.pieces[i];
-                view.setX(squareX(this.boardSize, file, squarePX));
-                view.setY(squareY(this.boardSize, rank, squarePX));
-                view.setFitWidth(squarePX);
-                view.setFitHeight(squarePX);
-
+            ImageView piece = this.pieces[i];
+            if (piece != null) {
+                pane.getChildren().remove(piece);
+                piece.setX(squareX(this.boardSize, file, squarePX));
+                piece.setY(squareY(this.boardSize, rank, squarePX));
+                piece.setFitWidth(squarePX);
+                piece.setFitHeight(squarePX);
+                piece.setOnMouseClicked((event -> {
+                    handleClick(i);
+                }));
+                pane.getChildren().add(piece);
+                System.out.println("Got object at " + i);
             }
         }
     }
 
+    private void handleClick(int index) {
+        if (this.lastClickedIndex == -1) {
+            //start of move source square
+            this.lastClickedIndex = index;
+            System.out.println("Storing move: " + index);
+        } else {
+            //We have a finished move to deal with
+            System.out.println("About to make move " + this.lastClickedIndex + " -> " + index);
+            Natives.giveRustMove(this.lastClickedIndex, index);
+            this.lastClickedIndex = -1;
+        }
+    }
+
+    /**
+     * Setups the squares of the board
+     * @param squarePX
+     */
     private void setupBoard(int squarePX) {
         this.board.getChildren().clear();
         for (int rank = 0; rank < this.boardSize; rank++) {
@@ -76,9 +114,12 @@ public class Main extends Application {
                 double x = file * squarePX;
                 double y = rank * squarePX;
                 Rectangle square = new Rectangle(x, y, squarePX, squarePX);
-                Paint color = ((rank % 2) ^ (file % 2)) == 1 ? Color.WHITE : Color.BROWN;
+                Paint color = ((rank % 2 ^ file % 2) == 1) ? Color.WHITE : Color.BROWN;
                 square.setFill(color);
                 board.getChildren().add(square);
+                square.setOnMouseClicked((event) -> {
+                    handleClick(i);
+                });
 
             }
         }
@@ -113,7 +154,7 @@ public class Main extends Application {
     }
 
     public Main() {
-        Natives.init();
+        Natives.init(this);
         this.boardSize = 10;
 
         this.pieces = new ImageView[this.boardSize * this.boardSize];
@@ -131,7 +172,21 @@ public class Main extends Application {
         pane.getChildren().add(board);
         pane.getChildren().add(this.pieces[5]);
         pane.getChildren().add(this.pieces[52]);
+    }
 
+    public void displayMove(int srcSquare, int destSquare) {
+        if (srcSquare == destSquare)
+            return;
+        ImageView capturedPiece = this.pieces[destSquare];
+        this.pieces[destSquare] = this.pieces[srcSquare];
+        this.pieces[srcSquare] = null;
+        System.out.println("moved " + srcSquare + " to " + destSquare);
+        if (capturedPiece != null) {
+            this.pane.getChildren().remove(capturedPiece);
+        }
+
+        //Refresh the board so that the piece that was just moved is displayed in its new location
+        resizeBoard(-1.0);
     }
 
     static class IntHolder {
