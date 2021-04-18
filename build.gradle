@@ -40,12 +40,64 @@ jar {
 }
 
 
+task cargoTest(type:Exec) {
+    def homePath = System.properties['user.home']
+
+    commandLine "${homePath}.cargo/bin/cargo"
+    args "test", "--manifest-path=./GigaChess/Cargo.toml"
+}
+
+test.dependsOn cargoTest
+
+def String outputFile
+
 task cargoBuild(type:Exec) {
     def homePath = System.properties['user.home']
 
     commandLine "${homePath}.cargo/bin/cargo"
     args "build", "--manifest-path=./GigaChess/Cargo.toml"
+
+    if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+        outputFile = "target/debug/giga_chess.dll"
+    } else {
+        outputFile = "target/debug/libgiga_chess.so"
+    }
 }
+
 
 compileJava.dependsOn cargoBuild
 
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    throw new GradleException('Building jar files on windows is not supported! Try on linux')
+
+} else {
+
+    task cargoBuildWindows(type:Exec) {
+        def homePath = System.properties['user.home']
+
+        commandLine "${homePath}.cargo/bin/cargo"
+        args "build", "--target", "x86_64-pc-windows-gnu", "--manifest-path=./GigaChess/Cargo.toml"
+    }
+
+
+    task copyNativesJar(type: Copy) {
+
+    }
+
+
+    jar.dependsOn copyNativesJar
+    copyNativesJar.dependsOn cargoBuildWindows
+
+/*
+    task cargoBuildAppleX86(type:Exec) {
+        def homePath = System.properties['user.home']
+
+        commandLine "${homePath}.cargo/bin/cargo"
+        args "build", "--target", "x86_64-apple-darwin", "--manifest-path=./GigaChess/Cargo.toml"
+    }
+
+    jar.dependsOn cargoBuildAppleX86
+*/
+
+
+}

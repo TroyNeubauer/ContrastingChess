@@ -3,7 +3,13 @@ package com.troy.chess;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ToolBar;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
@@ -14,7 +20,7 @@ import javafx.scene.image.ImageView;
 import java.io.InputStream;
 
 public class Main extends Application {
-    private Pane board = new Pane();
+    private BorderPane board = new BorderPane();
     private Pane pane = new Pane();
 
     private int boardSize;
@@ -70,12 +76,40 @@ public class Main extends Application {
                 double x = file * squarePX;
                 double y = rank * squarePX;
                 Rectangle square = new Rectangle(x, y, squarePX, squarePX);
-                Paint color = ((rank % 2) ^ (file % 2)) == 0 ? Color.WHITE : Color.BROWN;
+                Paint color = ((rank % 2) ^ (file % 2)) == 1 ? Color.WHITE : Color.BROWN;
                 square.setFill(color);
                 board.getChildren().add(square);
 
             }
         }
+    }
+
+    private void setupToolbar() {
+        BorderPane root = new BorderPane();
+        VBox topContainer = new VBox(); // Creates a container to hold all Menu Objects.
+        MenuBar mainMenu = new MenuBar(); // Creates our main menu to hold our Sub-Menus.
+        ToolBar toolBar = new ToolBar(); // Creates our tool-bar to hold the buttons.
+
+        topContainer.getChildren().add(mainMenu);
+        topContainer.getChildren().add(toolBar);
+        root.setTop(topContainer);
+
+        // Create and add the "File" sub-menu options.
+        Menu file = new Menu("File");
+        MenuItem openFile = new MenuItem("Open File");
+        MenuItem exitApp = new MenuItem("Exit");
+        file.getItems().addAll(openFile, exitApp);
+        // Create and add the "Edit" sub-menu options.
+        Menu edit = new Menu("Edit");
+        MenuItem properties = new MenuItem("Properties");
+        edit.getItems().add(properties);
+        // Create and add the "Help" sub-menu options.
+        Menu help = new Menu("Help");
+        MenuItem visitWebsite = new MenuItem("Visit Website");
+        help.getItems().add(visitWebsite);
+        mainMenu.getMenus().addAll(file, edit, help);
+
+        pane.getChildren().add(root);
     }
 
     public Main() {
@@ -92,14 +126,9 @@ public class Main extends Application {
         this.pieces[52].setImage(ELEPHANT);
 
         setupBoard(10);
-
-        Button start = new Button();
-        start.relocate(50, 0);
-        start.setText("Start");
-        start.autosize();
+        setupToolbar();
 
         pane.getChildren().add(board);
-        pane.getChildren().add(start);
         pane.getChildren().add(this.pieces[5]);
         pane.getChildren().add(this.pieces[52]);
 
