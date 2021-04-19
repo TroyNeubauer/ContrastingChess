@@ -199,12 +199,6 @@ public class Main extends Application {
 
         stage.setScene(new Scene(this.root, 512, 512));
         stage.setTitle("Contrasting Chess by Troy Neubauer");
-        stage.addEventHandler(EventType.ROOT, (event) -> {
-            System.out.println("event " + event.toString());
-        });
-        stage.show();
-
-        doResize(this.board.getWidth(), this.board.getHeight());
 
         stage.widthProperty().addListener((obs, oldVal, newVal) -> {
             doResize(this.board.getWidth(), this.board.getHeight());
@@ -214,12 +208,15 @@ public class Main extends Application {
             doResize(this.board.getWidth(), this.board.getHeight());
         });
 
+        stage.show();
+        doResize(this.board.getWidth(), this.board.getHeight());
     }
 
     private void doResize(double width, double height) {
         // Always leave one square of padding
         double squareWidthPX = width / this.boardSize;
-        double squareHeightPX = height / this.boardSize; //(height - this.osTitleBarSize - this.mainMenuSize) / (this.boardSize);
+        double squareHeightPX = height / this.boardSize; // (height - this.osTitleBarSize - this.mainMenuSize) /
+                                                         // (this.boardSize);
         double squarePX = Math.min(squareWidthPX, squareHeightPX);
 
         resizeBoard(squarePX);
