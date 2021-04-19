@@ -36,13 +36,13 @@ public class LibraryLoader {
 
     /**
      * Our job is to load a native Rust library. There are a couple different ways
-     * we can accomplish:
+     * we can accomplish this:
      *
      * - If the directory containing the library is in the system's list of search
      * dirs for a dynamic library then load it from there.
      *
      * - If we are in a dev environment, then cargo will generate
-     * target/debug/libname.xxx so we can craft that path and try to load it
+     * ./target/debug/lib_name.xxx so we can craft that path and try to load it
      *
      * - Lastly if we are in a jar file then we can try to extract it from the
      * classpath into a temp file and then load the temp file
