@@ -1,6 +1,7 @@
 package com.troy.chess;
 
 import javafx.application.Application;
+import javafx.event.EventType;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
@@ -22,8 +23,6 @@ public class Main extends Application {
     private MenuBar mainMenu = new MenuBar();
 
     private int boardSize;
-    private int osTitleBarSize;
-    private int mainMenuSize;
 
     private ImageView[] pieces;
 
@@ -150,7 +149,6 @@ public class Main extends Application {
         this.mainMenu.getMenus().addAll(file, edit, help);
 
         this.root.getChildren().add(this.mainMenu);
-        this.root.setAlignment(Pos.TOP_CENTER);
     }
 
     public Main() {
@@ -170,6 +168,10 @@ public class Main extends Application {
         setupToolbar();
 
         this.root.getChildren().add(this.board);
+        this.root.setAlignment(Pos.TOP_CENTER);
+        this.root.setFillWidth(true);
+        this.board.prefWidthProperty().bind(this.root.widthProperty());
+        this.board.prefHeightProperty().bind(this.root.heightProperty());
     }
 
     public void displayMove(int srcSquare, int destSquare) {
@@ -188,43 +190,36 @@ public class Main extends Application {
         resizeBoard(-1.0);
     }
 
-    static class IntHolder {
-        int value;
+    static class DoubleHolder {
+        double value;
     }
 
     @Override
     public void start(Stage stage) {
-        final IntHolder width = new IntHolder();
-        final IntHolder height = new IntHolder();
-        width.value = 512;
-        height.value = 512;
 
-        stage.setScene(new Scene(this.root, width.value, height.value));
+        stage.setScene(new Scene(this.root, 512, 512));
         stage.setTitle("Contrasting Chess by Troy Neubauer");
+        stage.addEventHandler(EventType.ROOT, (event) -> {
+            System.out.println("event " + event.toString());
+        });
         stage.show();
-        this.osTitleBarSize = (int) stage.getHeight() - height.value;
-        this.mainMenuSize = (int) this.mainMenu.getHeight();
-        System.out.println(
-                "Window title bar size is: " + this.osTitleBarSize + " and top border size os: " + this.mainMenuSize);
 
-        doResize(width.value, height.value);
+        doResize(this.board.getWidth(), this.board.getHeight());
 
         stage.widthProperty().addListener((obs, oldVal, newVal) -> {
-            width.value = newVal.intValue();
-            doResize(width.value, height.value);
+            doResize(this.board.getWidth(), this.board.getHeight());
         });
 
         stage.heightProperty().addListener((obs, oldVal, newVal) -> {
-            height.value = newVal.intValue();
-            doResize(width.value, height.value);
+            doResize(this.board.getWidth(), this.board.getHeight());
         });
 
     }
 
-    private void doResize(int width, int height) {
+    private void doResize(double width, double height) {
         // Always leave one square of padding
-        double squareWidthPX = (double) width / (this.boardSize);
-        double squareHeightPX = (double) (height - this.osTitleBarSize - this.mainMenuSize) / (this.boardSize);
+        double squareWidthPX = width / this.boardSize;
+        double squareHeightPX = height / this.boardSize; //(height - this.osTitleBarSize - this.mainMenuSize) / (this.boardSize);
         double squarePX = Math.min(squareWidthPX, squareHeightPX);
 
         resizeBoard(squarePX);
