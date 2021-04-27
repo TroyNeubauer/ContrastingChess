@@ -1,10 +1,15 @@
 package com.troy.chess;
 
+import java.io.File;
+import java.net.URI;
+import java.nio.file.Files;
+
 import javafx.application.Application;
 import javafx.event.EventType;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
@@ -13,6 +18,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -55,7 +61,7 @@ public class Main extends Application {
      *                 use the last value
      */
     private void resizeBoard(double squarePX) {
-        if (squarePX == -1) {
+        if (squarePX == -1.0) {
             squarePX = this.lastSquarePX;
             // System.out.println("Using last square px" + squarePX);
         } else {
@@ -134,21 +140,88 @@ public class Main extends Application {
     private void setupToolbar() {
 
         // Create and add the "File" sub-menu options.
-        Menu file = new Menu("File");
-        MenuItem openFile = new MenuItem("Open File");
+        Menu fileMenu = new Menu("File");
+        MenuItem importGame = new MenuItem("Import Game");
+        importGame.onActionProperty().set((event) -> {
+            FileChooser chooser = new FileChooser();
+            chooser.setSelectedExtensionFilter(new FileChooser.ExtensionFilter("FEN or PGN files", "pgn"));
+            File file = chooser.showOpenDialog(null);
+            if (file == null || !file.exists()) {
+                return;
+            }
+            try {
+                String fen = new String(Files.readAllBytes(file.toPath()));
+                parseFEN(fen);
+            } catch (Exception e) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setHeaderText("Failed to load file: " + file);
+                alert.setContentText(e.getClass() + " - " + e.getMessage());
+                alert.showAndWait();
+            }
+        });
         MenuItem exitApp = new MenuItem("Exit");
-        file.getItems().addAll(openFile, exitApp);
+        fileMenu.getItems().addAll(importGame, exitApp);
         // Create and add the "Edit" sub-menu options.
         Menu edit = new Menu("Edit");
         MenuItem properties = new MenuItem("Properties");
         edit.getItems().add(properties);
         // Create and add the "Help" sub-menu options.
         Menu help = new Menu("Help");
-        MenuItem visitWebsite = new MenuItem("Visit Website");
-        help.getItems().add(visitWebsite);
-        this.mainMenu.getMenus().addAll(file, edit, help);
+        MenuItem visitRepository = new MenuItem("Visit Repository");
+        visitRepository.onActionProperty().set((event) -> {
+            getHostServices().showDocument("https://github.com/TroyNeubauer/ContrastingChess");
+        });
+        help.getItems().add(visitRepository);
+
+        MenuItem reportBug = new MenuItem("Report Bug");
+        reportBug.onActionProperty().set((event) -> {
+            getHostServices().showDocument("https://github.com/TroyNeubauer/ContrastingChess/issues/new");
+        });
+
+        help.getItems().add(reportBug);
+
+        this.mainMenu.getMenus().addAll(fileMenu, edit, help);
 
         this.root.getChildren().add(this.mainMenu);
+    }
+
+    private void parseFEN(String fen) {
+        // FEN files are in the format:
+        // -rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 (the starting
+        // position)
+        // -rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2
+        // (The board then who is to move, then castling right per side, then the
+        // en-passant square, then the move of
+        // half moves since the last capture of pawn advance, then the move number)
+        int sideLength = 1;
+        String[] records = fen.split(" ");
+        if (records.length != 6) {
+            throw new RuntimeException("FEN file has " + records.length + " expected 6");
+        }
+        String board = records[0];
+        String toMove = records[1];
+        String castling = records[2];
+        String enPassant = records[3];
+        String halfmove = records[4];
+        String fullMove = records[5];
+        // Count the number of /'s to determine board size
+        for (char c : fen.toCharArray()) {
+            if (c == '/') {
+                sideLength++;
+            }
+        }
+        int piecesRead = 0;
+        int index = 0;
+        while (true) {
+            char c = fen.charAt(index++);
+            if (c == ' ') {
+                // Ignore everything after the board for now
+                // TODO: implement full parsing
+                break;
+            }
+
+        }
+        resizeBoard(-1.0);
     }
 
     public Main() {
