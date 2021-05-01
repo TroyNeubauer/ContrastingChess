@@ -3,6 +3,10 @@ package com.troy.chess;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Files;
+import java.io.InputStream;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.BitSet;
 
 import javafx.application.Application;
 import javafx.event.EventType;
@@ -13,6 +17,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -22,6 +27,9 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.PixelReader;
+import javafx.scene.image.PixelWriter;
+import javafx.scene.image.WritableImage;
 
 public class Main extends Application {
     private Pane board = new Pane();
@@ -32,7 +40,8 @@ public class Main extends Application {
 
     private ImageView[] pieces;
 
-    private Image KING, ELEPHANT;
+    private ArrayList<Image> WHITE_PIECES = new ArrayList<>();
+    private ArrayList<Image> BLACK_PIECES = new ArrayList<>();
 
     /**
      * The index of the last square that was clicked or -1 in no square has been
@@ -60,7 +69,7 @@ public class Main extends Application {
      * @param squarePX How wide and tall in pixels each square should be. Use -1 to
      *                 use the last value
      */
-    private void resizeBoard(double squarePX) {
+    private void resizeWindow(double squarePX) {
         if (squarePX == -1.0) {
             squarePX = this.lastSquarePX;
             // System.out.println("Using last square px" + squarePX);
@@ -113,12 +122,24 @@ public class Main extends Application {
     }
 
     /**
+     * Changes the size of the board to a new width. Clearing all pieces in the
+     * process
+     */
+    private void setBoardSize(int boardWidth) {
+        this.boardSize = boardWidth;
+        this.pieces = new ImageView[this.boardSize * this.boardSize];
+        setupBoard(10);
+    }
+
+    /**
      * Setups the squares of the board
      * 
      * @param squarePX
      */
     private void setupBoard(int squarePX) {
         this.board.getChildren().clear();
+        Color light = Color.color(0xff / 255.0, 0xce / 255.0, 0x9e / 255.0);
+        Color dark = Color.color(0xd1 / 255.0, 0x8b / 255.0, 0x47 / 255.0);
 
         for (int rank = 0; rank < this.boardSize; rank++) {
             for (int file = 0; file < this.boardSize; file++) {
@@ -126,7 +147,7 @@ public class Main extends Application {
                 double x = file * squarePX;
                 double y = rank * squarePX;
                 Rectangle square = new Rectangle(x, y, squarePX, squarePX);
-                Paint color = ((rank % 2 ^ file % 2) == 1) ? Color.WHITE : Color.BROWN;
+                Paint color = ((rank % 2 ^ file % 2) == 1) ? light : dark;
                 square.setFill(color);
                 board.getChildren().add(square);
                 square.setOnMouseClicked((event) -> {
@@ -144,7 +165,7 @@ public class Main extends Application {
         MenuItem importGame = new MenuItem("Import Game");
         importGame.onActionProperty().set((event) -> {
             FileChooser chooser = new FileChooser();
-            chooser.setSelectedExtensionFilter(new FileChooser.ExtensionFilter("FEN or PGN files", "pgn"));
+            chooser.setSelectedExtensionFilter(new FileChooser.ExtensionFilter("FEN file", "fen"));
             File file = chooser.showOpenDialog(null);
             if (file == null || !file.exists()) {
                 return;
@@ -185,6 +206,9 @@ public class Main extends Application {
         this.root.getChildren().add(this.mainMenu);
     }
 
+    private static final String[] IMAGE_NAMES = new String[] { "king", "queen", "rook", "bishop", "night", "pawn",
+            "donkey", "elephant", "moose" };
+
     private void parseFEN(String fen) {
         // FEN files are in the format:
         // -rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 (the starting
@@ -210,18 +234,51 @@ public class Main extends Application {
                 sideLength++;
             }
         }
-        int piecesRead = 0;
+        setBoardSize(sideLength);
         int index = 0;
-        while (true) {
-            char c = fen.charAt(index++);
-            if (c == ' ') {
-                // Ignore everything after the board for now
-                // TODO: implement full parsing
-                break;
-            }
 
+        // 0-7 for an 8x8 board
+        int rank = 7;
+        int file = 0;
+        while (index < board.length() && rank >= 0) {
+            char c = board.charAt(index++);
+            if (c == '/') {
+                rank--;
+                file = 0;
+
+            } else if (Character.isDigit(c)) {
+                file += c - '0';
+
+            } else {
+                char piece = Character.toLowerCase(c);
+                int pieceIndex = -1;
+                for (int i = 0; i < IMAGE_NAMES.length; i++) {
+                    if (IMAGE_NAMES[i].charAt(0) == piece) {
+                        pieceIndex = i;
+                    }
+                }
+                if (pieceIndex == -1) {
+                    Alert alert = new Alert(AlertType.ERROR);
+                    alert.setTitle("Invalid FEN file");
+                    alert.setContentText("Unknown piece type: " + c + " at byte " + index);
+                    alert.showAndWait();
+                    return;
+                }
+                Image image;
+                if (Character.isUpperCase(c)) {
+                    image = WHITE_PIECES.get(pieceIndex);
+                } else {
+                    image = BLACK_PIECES.get(pieceIndex);
+                }
+                System.out.println("Setting " + file + "-" + rank + " to " + pieceIndex);
+                this.pieces[rank * sideLength + file] = new ImageView(image);
+                file++;
+            }
         }
-        resizeBoard(-1.0);
+        // Ignore everything after the board for now
+        // TODO: implement full parsing
+
+        doResize(this.board.getWidth(), this.board.getHeight());
     }
 
     public Main() {
@@ -231,11 +288,17 @@ public class Main extends Application {
         this.pieces = new ImageView[this.boardSize * this.boardSize];
         loadImages();
 
-        this.pieces[5] = new ImageView();
-        this.pieces[5].setImage(KING);
+        for (int i = 0; i < 20; i++) {
+            int pos = (int) (Math.random() * this.pieces.length);
+            int piece = (int) (Math.random() * WHITE_PIECES.size());
 
-        this.pieces[52] = new ImageView();
-        this.pieces[52].setImage(ELEPHANT);
+            if (Math.random() > 0.5) {
+                this.pieces[pos] = new ImageView(WHITE_PIECES.get(piece));
+            } else {
+                this.pieces[pos] = new ImageView(BLACK_PIECES.get(piece));
+            }
+
+        }
 
         setupBoard(10);
         setupToolbar();
@@ -260,7 +323,7 @@ public class Main extends Application {
 
         // Refresh the board so that the piece that was just moved is displayed in its
         // new location
-        resizeBoard(-1.0);
+        resizeWindow(-1.0);
     }
 
     static class DoubleHolder {
@@ -292,11 +355,84 @@ public class Main extends Application {
                                                          // (this.boardSize);
         double squarePX = Math.min(squareWidthPX, squareHeightPX);
 
-        resizeBoard(squarePX);
+        resizeWindow(squarePX);
+    }
+
+    private Image loadImage(String path) {
+        InputStream stream = this.getClass().getResourceAsStream(path);
+        if (stream == null) {
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setTitle("Failed to load images");
+            alert.setHeaderText("Failed to load chess piece images");
+            alert.setContentText(
+                    "These images are usually located inside the jar file. Something must have gone wrong...");
+            alert.showAndWait();
+            System.exit(1);
+            return null;
+        }
+        return new Image(stream);
+    }
+
+    private void tryPixel(int x, int y, ArrayDeque<Integer> todo, PixelReader reader, int w, int h) {
+        if (x >= 0 && x < w && y >= 0 && y < h) {
+            todo.push(y * w + x);
+        }
     }
 
     private void loadImages() {
-        this.KING = new Image(this.getClass().getResourceAsStream("/contrasting_chess/king.png"));
-        this.ELEPHANT = new Image(this.getClass().getResourceAsStream("/contrasting_chess/elephant.png"));
+        for (String name : IMAGE_NAMES) {
+            WHITE_PIECES.add(loadImage("/contrasting_chess/" + name + ".png"));
+        }
+
+        // Invert colors for black pieces
+        for (Image piece : WHITE_PIECES) {
+            int w = (int) piece.getWidth();
+            int h = (int) piece.getHeight();
+            WritableImage blackPiece = new WritableImage(w, h);
+            PixelWriter writer = blackPiece.getPixelWriter();
+            PixelReader writerReader = blackPiece.getPixelReader();
+            PixelReader reader = piece.getPixelReader();
+            BitSet bitset = new BitSet(w * h);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    // Retrieving the color of the pixel of the loaded image
+                    Color color = reader.getColor(x, y);
+                    // Setting the color to the writable image
+                    writer.setColor(x, y, color.invert());
+                }
+            }
+            ArrayDeque<Integer> todo = new ArrayDeque<>();
+            todo.add(0);
+            // We also want to make the now white boarders on the piece also black
+            // So use a simple BFS algorithm to find accessible pixels and make them black
+            while (!todo.isEmpty()) {
+                int pos = todo.pop();
+                if (bitset.get(pos)) {
+                    continue;
+                }
+                bitset.set(pos, true);
+                int x = pos % w;
+                int y = pos / w;
+                Color color = writerReader.getColor(x, y);
+                boolean keepSearching = false;
+                if (color.getRed() != 0.0 && color.getGreen() != 0.0 && color.getBlue() != 0.0) {
+                    // We found white
+                    writer.setColor(x, y, Color.BLACK);
+                    keepSearching = true;
+                }
+                if (color.getOpacity() == 0.0) {
+                    keepSearching = true;
+                }
+                if (keepSearching) {
+                    tryPixel(x + 1, y, todo, writerReader, w, h);
+                    tryPixel(x, y + 1, todo, writerReader, w, h);
+                    tryPixel(x - 1, y, todo, writerReader, w, h);
+                    tryPixel(x, y - 1, todo, writerReader, w, h);
+
+                }
+
+            }
+            BLACK_PIECES.add(blackPiece);
+        }
     }
 }
