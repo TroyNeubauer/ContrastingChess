@@ -67,6 +67,13 @@ task copyNativesJar(type: Copy) {
 
 }
 
+jar {
+
+    manifest {
+        attributes "Main-Class": application.mainClassName
+    }
+}
+
 task fatJar(type: Jar) {
 
     manifest {
