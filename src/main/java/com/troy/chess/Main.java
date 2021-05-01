@@ -288,7 +288,7 @@ public class Main extends Application {
         this.pieces = new ImageView[this.boardSize * this.boardSize];
         loadImages();
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 50; i++) {
             int pos = (int) (Math.random() * this.pieces.length);
             int piece = (int) (Math.random() * WHITE_PIECES.size());
 
@@ -358,17 +358,21 @@ public class Main extends Application {
         resizeWindow(squarePX);
     }
 
-    private Image loadImage(String path) {
+    private Image loadImage(String path, boolean errorOk) {
         InputStream stream = this.getClass().getResourceAsStream(path);
         if (stream == null) {
-            Alert alert = new Alert(AlertType.ERROR);
-            alert.setTitle("Failed to load images");
-            alert.setHeaderText("Failed to load chess piece images");
-            alert.setContentText(
-                    "These images are usually located inside the jar file. Something must have gone wrong...");
-            alert.showAndWait();
-            System.exit(1);
-            return null;
+            if (errorOk) {
+                return null;
+            } else {
+                Alert alert = new Alert(AlertType.ERROR);
+                alert.setTitle("Failed to load images");
+                alert.setHeaderText("Failed to load chess piece images");
+                alert.setContentText(
+                        "These images are usually located inside the jar file. Something must have gone wrong...");
+                alert.showAndWait();
+                System.exit(1);
+                return null;
+            }
         }
         return new Image(stream);
     }
@@ -381,58 +385,59 @@ public class Main extends Application {
 
     private void loadImages() {
         for (String name : IMAGE_NAMES) {
-            WHITE_PIECES.add(loadImage("/contrasting_chess/" + name + ".png"));
+            WHITE_PIECES.add(loadImage("/contrasting_chess/" + name + ".png", false));
         }
 
         // Invert colors for black pieces
-        for (Image piece : WHITE_PIECES) {
-            int w = (int) piece.getWidth();
-            int h = (int) piece.getHeight();
-            WritableImage blackPiece = new WritableImage(w, h);
-            PixelWriter writer = blackPiece.getPixelWriter();
-            PixelReader writerReader = blackPiece.getPixelReader();
-            PixelReader reader = piece.getPixelReader();
-            BitSet bitset = new BitSet(w * h);
-            for (int y = 0; y < h; y++) {
-                for (int x = 0; x < w; x++) {
-                    // Retrieving the color of the pixel of the loaded image
-                    Color color = reader.getColor(x, y);
-                    // Setting the color to the writable image
-                    writer.setColor(x, y, color.invert());
+        for (int i = 0; i < WHITE_PIECES.size(); i++) {
+            Image whitePiece = WHITE_PIECES.get(i);
+            Image blackImage = loadImage("/contrasting_chess/" + IMAGE_NAMES[i] + "_black.png", true);
+            if (blackImage != null) {
+                BLACK_PIECES.add(blackImage);
+            } else {
+                int w = (int) whitePiece.getWidth();
+                int h = (int) whitePiece.getHeight();
+                WritableImage blackPiece = new WritableImage(w, h);
+                PixelWriter writer = blackPiece.getPixelWriter();
+                PixelReader writerReader = blackPiece.getPixelReader();
+                PixelReader reader = whitePiece.getPixelReader();
+                BitSet bitset = new BitSet(w * h);
+                for (int y = 0; y < h; y++) {
+                    for (int x = 0; x < w; x++) {
+                        // Retrieving the color of the pixel of the loaded image
+                        Color color = reader.getColor(x, y);
+                        // Setting the color to the writable image
+                        writer.setColor(x, y, color.invert());
+                    }
                 }
-            }
-            ArrayDeque<Integer> todo = new ArrayDeque<>();
-            todo.add(0);
-            // We also want to make the now white boarders on the piece also black
-            // So use a simple BFS algorithm to find accessible pixels and make them black
-            while (!todo.isEmpty()) {
-                int pos = todo.pop();
-                if (bitset.get(pos)) {
-                    continue;
-                }
-                bitset.set(pos, true);
-                int x = pos % w;
-                int y = pos / w;
-                Color color = writerReader.getColor(x, y);
-                boolean keepSearching = false;
-                if (color.getRed() != 0.0 && color.getGreen() != 0.0 && color.getBlue() != 0.0) {
-                    // We found white
-                    writer.setColor(x, y, Color.BLACK);
-                    keepSearching = true;
-                }
-                if (color.getOpacity() == 0.0) {
-                    keepSearching = true;
-                }
-                if (keepSearching) {
+                ArrayDeque<Integer> todo = new ArrayDeque<>();
+                todo.add(0);
+                // We also want to make the now white boarders on the piece also black
+                // So use a simple BFS algorithm to find accessible pixels and make them black
+                while (!todo.isEmpty()) {
+                    int pos = todo.pop();
+                    if (bitset.get(pos)) {
+                        continue;
+                    }
+                    bitset.set(pos, true);
+                    int x = pos % w;
+                    int y = pos / w;
+                    Color color = writerReader.getColor(x, y);
+                    if (color.getRed() == 0.0 && color.getGreen() == 0.0 && color.getBlue() == 0.0 && color.getOpacity() == 1.0) {
+                        //Don't touch black that we just inverted
+                        continue;
+                    }
+                    if (color.getOpacity() != 0.0) {
+                        writer.setColor(x, y, Color.BLACK);
+                    }
                     tryPixel(x + 1, y, todo, writerReader, w, h);
                     tryPixel(x, y + 1, todo, writerReader, w, h);
                     tryPixel(x - 1, y, todo, writerReader, w, h);
                     tryPixel(x, y - 1, todo, writerReader, w, h);
 
                 }
-
+                BLACK_PIECES.add(blackPiece);
             }
-            BLACK_PIECES.add(blackPiece);
         }
     }
 }
