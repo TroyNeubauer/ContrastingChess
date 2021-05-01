@@ -270,7 +270,6 @@ public class Main extends Application {
                 } else {
                     image = BLACK_PIECES.get(pieceIndex);
                 }
-                System.out.println("Setting " + file + "-" + rank + " to " + pieceIndex);
                 this.pieces[rank * sideLength + file] = new ImageView(image);
                 file++;
             }
@@ -441,3 +440,4 @@ public class Main extends Application {
         }
     }
 }
+
