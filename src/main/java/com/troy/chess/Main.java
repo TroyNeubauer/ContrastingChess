@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javafx.application.Application;
 import javafx.event.EventType;
@@ -43,6 +44,8 @@ public class Main extends Application {
     private ArrayList<Image> WHITE_PIECES = new ArrayList<>();
     private ArrayList<Image> BLACK_PIECES = new ArrayList<>();
 
+    private AtomicInteger gameCount = new AtomicInteger(0);
+
     /**
      * The index of the last square that was clicked or -1 in no square has been
      * clicked yet. Used for storing the first square clicked when making a move
@@ -74,7 +77,6 @@ public class Main extends Application {
     private void resizeWindow(double squarePX) {
         if (squarePX == -1.0) {
             squarePX = this.lastSquarePX;
-            // System.out.println("Using last square px" + squarePX);
         } else {
             this.lastSquarePX = squarePX;
         }
@@ -82,6 +84,8 @@ public class Main extends Application {
         for (int ii = 0; ii < this.board.getChildren().size(); ii++) {
             final int i = ii;
             Node node = board.getChildren().get(i);
+            // The rectangular squares come first before the piece ImageViews so once we hit
+            // a non-rectangle we're done
             if (!(node instanceof Rectangle))
                 break;
 
@@ -104,7 +108,6 @@ public class Main extends Application {
                     handleClick(i);
                 }));
                 board.getChildren().add(piece);
-                // System.out.println("Got object at " + i);
             }
         }
     }
@@ -184,7 +187,7 @@ public class Main extends Application {
         });
         fileMenu.getItems().add(importGame);
 
-        //Inndices must align with rust game variantn ID's
+        // Inndices must align with rust game variantn ID's
         String[] chessVariants = new String[] { "chess", "contrasting_chess" };
         for (int variantID = 0; variantID < chessVariants.length; variantID++) {
             final int variantID2 = variantID;
@@ -251,13 +254,18 @@ public class Main extends Application {
         int id = (int) (Math.random() * Integer.MAX_VALUE);
         this.currentGameID = id;
         new Thread(() -> {
-            System.out.println("Running game in thread " + Thread.currentThread().getId());
+            Main.this.gameCount.incrementAndGet();
+
+            // Count how many threads we currently have in rust code
             boolean result = Natives.start_game(algorithmA, algorithmB, gameType, id);
-            System.out.println("Rusut returned " + result + " from game");
+            System.out.println("Rust returned " + result + " from game");
+
+            Main.this.gameCount.decrementAndGet();
         }).start();
     }
 
-    private static final String[] IMAGE_NAMES = new String[] { "king", "queen", "rook", "bishop", "night", "pawn",
+    // Empty name represents black square
+    private static final String[] IMAGE_NAMES = new String[] { "", "king", "queen", "rook", "bishop", "night", "pawn",
             "donkey", "elephant", "moose" };
 
     private void parseFEN(String fen) {
@@ -304,7 +312,7 @@ public class Main extends Application {
                 char piece = Character.toLowerCase(c);
                 int pieceIndex = -1;
                 for (int i = 0; i < IMAGE_NAMES.length; i++) {
-                    if (IMAGE_NAMES[i].charAt(0) == piece) {
+                    if (IMAGE_NAMES[i].length() > 0 && IMAGE_NAMES[i].charAt(0) == piece) {
                         pieceIndex = i;
                     }
                 }
@@ -414,6 +422,15 @@ public class Main extends Application {
         newGame("human", "human", 0);
     }
 
+    @Override
+    public void stop() {
+        if (this.gameCount.get() != 0) {
+            //We still have outstanding native threads that may not return for a while
+            System.out.println("Native threads are still running. Forcing quit");
+            System.exit(0);
+        }
+    }
+
     private void doResize(double width, double height) {
         // Always leave one square of padding
         double squareWidthPX = width / this.boardSize;
@@ -450,13 +467,22 @@ public class Main extends Application {
     }
 
     private void loadImages() {
+        // Index 0 must be null to indicate an empty square
         for (String name : IMAGE_NAMES) {
-            WHITE_PIECES.add(loadImage("/contrasting_chess/" + name + ".png", false));
+            if (name.equals("")) {
+                WHITE_PIECES.add(null);
+            } else {
+                WHITE_PIECES.add(loadImage("/contrasting_chess/" + name + ".png", false));
+            }
         }
 
         // Invert colors for black pieces
         for (int i = 0; i < WHITE_PIECES.size(); i++) {
             Image whitePiece = WHITE_PIECES.get(i);
+            if (whitePiece == null) {
+                BLACK_PIECES.add(null);
+                continue;
+            }
             Image blackImage = loadImage("/contrasting_chess/" + IMAGE_NAMES[i] + "_black.png", true);
             if (blackImage != null) {
                 BLACK_PIECES.add(blackImage);
