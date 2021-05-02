@@ -64,13 +64,26 @@ public class Natives {
      * @param aAlgorithmName
      * @param bAlgorithmName
      * @param gameType
+     * @param gameID a unique id for the game. The same ID will be passed back to display_move et al.
      */
-    public static native void start_game(String aAlgorithmName, String bAlgorithmName, int gameType);
+    public static native boolean start_game(String aAlgorithmName, String bAlgorithmName, int gameType, int gameID);
 
     // ============================== Functions Called From Rust ==============================
+    // All return true if the game is continuing, false if it has ended
 
-    public static void display_move(int srcSquare, int destSquare) {
+    public static boolean display_move(int gameID, int srcSquare, int destSquare) {
         main.displayMove(srcSquare, destSquare);
+        return gameID == main.getCurrentGameID();
+    }
+
+    public static boolean set_square(int gameID, int square, int pieceKind, int color) {
+        main.setSquare(square, pieceKind, color);
+        return gameID == main.getCurrentGameID();
+    }
+
+    public static boolean set_board_size(int gameID, int size) {
+        main.setBoardSize(size);
+        return gameID == main.getCurrentGameID();
     }
 
     /**
@@ -101,14 +114,6 @@ public class Natives {
                 return move;
             }
         }
-    }
-
-    /**
-     * Called when the game starts or after each move is made to inform the UI about the time left for each player
-     * @param TODO
-     */
-    public static void status_update(long TODO) {
-
     }
 
 }

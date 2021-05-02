@@ -62,6 +62,8 @@ public class Main extends Application {
 
     private double lastSquarePX = 10;
 
+    private int currentGameID = -1;
+
     /**
      * Resizes the existing squares in java fx so that they each have the requested
      * size in pixels
@@ -125,7 +127,7 @@ public class Main extends Application {
      * Changes the size of the board to a new width. Clearing all pieces in the
      * process
      */
-    private void setBoardSize(int boardWidth) {
+    public void setBoardSize(int boardWidth) {
         this.boardSize = boardWidth;
         this.pieces = new ImageView[this.boardSize * this.boardSize];
         setupBoard(10);
@@ -180,8 +182,32 @@ public class Main extends Application {
                 alert.showAndWait();
             }
         });
+        fileMenu.getItems().add(importGame);
+
+        //Inndices must align with rust game variantn ID's
+        String[] chessVariants = new String[] { "chess", "contrasting_chess" };
+        for (int variantID = 0; variantID < chessVariants.length; variantID++) {
+            final int variantID2 = variantID;
+            Menu newGame = new Menu("New " + makePrettyAlgorithmName(chessVariants[variantID]) + " Game");
+
+            String[] players = new String[] { "human", "random_ai" };
+            for (String a : players) {
+                for (String b : players) {
+                    String niceA = makePrettyAlgorithmName(a);
+                    String niceB = makePrettyAlgorithmName(b);
+                    MenuItem item = new MenuItem(niceA + " vs. " + niceB);
+                    item.onActionProperty().set((event) -> {
+                        System.out.println("Starting new game " + niceA + " vs " + niceB + " variant " + variantID2);
+                        this.newGame(a, b, variantID2);
+                    });
+                    newGame.getItems().add(item);
+                }
+            }
+            fileMenu.getItems().add(newGame);
+        }
+
         MenuItem exitApp = new MenuItem("Exit");
-        fileMenu.getItems().addAll(importGame, exitApp);
+        fileMenu.getItems().add(exitApp);
         // Create and add the "Edit" sub-menu options.
         Menu edit = new Menu("Edit");
         MenuItem properties = new MenuItem("Properties");
@@ -204,6 +230,31 @@ public class Main extends Application {
         this.mainMenu.getMenus().addAll(fileMenu, edit, help);
 
         this.root.getChildren().add(this.mainMenu);
+    }
+
+    private String makePrettyAlgorithmName(String name) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (i == 0 || name.charAt(i - 1) == '_') {
+                sb.append(Character.toUpperCase(c));
+            } else if (c == '_') {
+                sb.append(' ');
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString().replaceAll(" Ai", " AI");
+    }
+
+    private void newGame(String algorithmA, String algorithmB, int gameType) {
+        int id = (int) (Math.random() * Integer.MAX_VALUE);
+        this.currentGameID = id;
+        new Thread(() -> {
+            System.out.println("Running game in thread " + Thread.currentThread().getId());
+            boolean result = Natives.start_game(algorithmA, algorithmB, gameType, id);
+            System.out.println("Rusut returned " + result + " from game");
+        }).start();
     }
 
     private static final String[] IMAGE_NAMES = new String[] { "king", "queen", "rook", "bishop", "night", "pawn",
@@ -325,6 +376,20 @@ public class Main extends Application {
         resizeWindow(-1.0);
     }
 
+    public void setSquare(int square, int piece, int color) {
+        Image image;
+        if (color % 2 == 0) {
+            image = WHITE_PIECES.get(piece);
+        } else {
+            image = BLACK_PIECES.get(piece);
+        }
+        this.pieces[square] = new ImageView(image);
+
+        // Refresh the board so that the piece that was just moved is displayed in its
+        // new location
+        resizeWindow(-1.0);
+    }
+
     static class DoubleHolder {
         double value;
     }
@@ -345,6 +410,8 @@ public class Main extends Application {
 
         stage.show();
         doResize(this.board.getWidth(), this.board.getHeight());
+
+        newGame("human", "human", 0);
     }
 
     private void doResize(double width, double height) {
@@ -422,8 +489,9 @@ public class Main extends Application {
                     int x = pos % w;
                     int y = pos / w;
                     Color color = writerReader.getColor(x, y);
-                    if (color.getRed() == 0.0 && color.getGreen() == 0.0 && color.getBlue() == 0.0 && color.getOpacity() == 1.0) {
-                        //Don't touch black that we just inverted
+                    if (color.getRed() == 0.0 && color.getGreen() == 0.0 && color.getBlue() == 0.0
+                            && color.getOpacity() == 1.0) {
+                        // Don't touch black that we just inverted
                         continue;
                     }
                     if (color.getOpacity() != 0.0) {
@@ -439,5 +507,8 @@ public class Main extends Application {
             }
         }
     }
-}
 
+    public int getCurrentGameID() {
+        return this.currentGameID;
+    }
+}
