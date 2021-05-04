@@ -266,7 +266,7 @@ public class Main extends Application {
 
     // Empty name represents black square
     private static final String[] IMAGE_NAMES = new String[] { "", "king", "queen", "rook", "bishop", "night", "pawn",
-            "donkey", "elephant", "moose" };
+            "bear", "elephant", "moose", "dragon", "weasel" };
 
     private void parseFEN(String fen) {
         // FEN files are in the format:
@@ -419,13 +419,13 @@ public class Main extends Application {
         stage.show();
         doResize(this.board.getWidth(), this.board.getHeight());
 
-        newGame("human", "human", 0);
+        newGame("human", "human", 1);
     }
 
     @Override
     public void stop() {
         if (this.gameCount.get() != 0) {
-            //We still have outstanding native threads that may not return for a while
+            // We still have outstanding native threads that may not return for a while
             System.out.println("Native threads are still running. Forcing quit");
             System.exit(0);
         }
